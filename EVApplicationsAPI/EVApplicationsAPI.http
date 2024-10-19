@@ -1,0 +1,6 @@
+@EVApplicationsAPI_HostAddress = http://localhost:5075
+
+GET {{EVApplicationsAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
