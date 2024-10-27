@@ -9,6 +9,13 @@ namespace EVApplicationAPI.Controllers;
 [Route("/applications")]
 public class UserApplicationsController : ControllerBase
 {
+    private readonly ILogger<UserApplicationsController> _logger;
+
+    public UserApplicationsController(ILogger<UserApplicationsController> logger)
+    {
+        _logger = logger ?? throw new ArgumentException(nameof(logger));
+    }
+
     [HttpGet]
     public ActionResult<IEnumerable<UserApplicationDto>> GetUserApplications()
     {
@@ -18,14 +25,25 @@ public class UserApplicationsController : ControllerBase
     [HttpGet("{id}", Name = "GetApplication")]
     public ActionResult<UserApplicationDto> GetApplication(int id)
     {
-        var application = ApplicationsDataStore.Current.UserApplications.FirstOrDefault(c => c.ApplicationId == id);
-
-        if (application == null)
+        try
         {
-            return NotFound();
-        }
+            var application = ApplicationsDataStore.Current.UserApplications.FirstOrDefault(c => c.ApplicationId == id);
 
-        return Ok(application);
+            if (application == null)
+            {
+                _logger.LogInformation("Application with id {id} wasn't found", id);
+                return NotFound();
+            }
+
+            return Ok(application);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(
+                $"Exception while getting application with id {id}", ex
+            );
+            return StatusCode(500, "A problem happened when handling your request");
+        }
     }
 
     [HttpPost]
@@ -37,7 +55,13 @@ public class UserApplicationsController : ControllerBase
         {
             ApplicationId = ++maxId,
             Name = userApplicationCreation.Name,
-            EmailAddress = userApplicationCreation.EmailAddress
+            EmailAddress = userApplicationCreation.EmailAddress,
+            AddressLine1 = userApplicationCreation.AddressLine1,
+            AddressLine2 = userApplicationCreation.AddressLine2,
+            City = userApplicationCreation.City,
+            County = userApplicationCreation.County,
+            Postcode = userApplicationCreation.Postcode,
+            Vrn = userApplicationCreation.Vrn
         };
 
         var applications = ApplicationsDataStore.Current.UserApplications;
@@ -79,7 +103,13 @@ public class UserApplicationsController : ControllerBase
         var applicationToPatch = new UserApplicationUpdateDto()
             {
                 Name = userApplicationFromStore.Name,
-                EmailAddress = userApplicationFromStore.EmailAddress
+                EmailAddress = userApplicationFromStore.EmailAddress,
+                AddressLine1 = userApplicationFromStore.AddressLine1,
+                AddressLine2 = userApplicationFromStore.AddressLine2,
+                City = userApplicationFromStore.City,
+                County = userApplicationFromStore.County,
+                Postcode = userApplicationFromStore.Postcode,
+                Vrn = userApplicationFromStore.Vrn
             };
 
         patchApplication.ApplyTo(applicationToPatch, ModelState);

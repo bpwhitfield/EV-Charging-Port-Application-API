@@ -16,13 +16,21 @@ public class ApplicationsDataStore
             {
                 ApplicationId = 1,
                 Name = "John Doe",
-                EmailAddress = "johndoe@test.com"
+                EmailAddress = "johndoe@test.com",
+                AddressLine1 = "address 1",
+                City = "city",
+                Postcode = "postcode",
+                Vrn = "vrn"
             },
             new UserApplicationDto()
             {
                 ApplicationId = 2,
                 Name = "Ben Whitfield",
-                EmailAddress = "bpwhitfield@test.com"
+                EmailAddress = "bpwhitfield@test.com",
+                AddressLine1 = "address 1",
+                City = "city",
+                Postcode = "postcode",
+                Vrn = "vrn"
             }
         };
     }
