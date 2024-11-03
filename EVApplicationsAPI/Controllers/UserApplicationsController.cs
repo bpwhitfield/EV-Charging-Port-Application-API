@@ -1,4 +1,6 @@
+using AutoMapper;
 using EVApplicationAPI.Models;
+using EVApplicationAPI.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -10,24 +12,29 @@ namespace EVApplicationAPI.Controllers;
 public class UserApplicationsController : ControllerBase
 {
     private readonly ILogger<UserApplicationsController> _logger;
+    private readonly IApplicationInfoRepository _applicationInfoRepository;
+    private readonly IMapper _mapper;
 
-    public UserApplicationsController(ILogger<UserApplicationsController> logger)
+    public UserApplicationsController(ILogger<UserApplicationsController> logger, IApplicationInfoRepository applicationInfoRepository, IMapper mapper)
     {
         _logger = logger ?? throw new ArgumentException(nameof(logger));
+        _applicationInfoRepository = applicationInfoRepository ?? throw new ArgumentException(nameof(applicationInfoRepository));
+        _mapper = mapper ?? throw new ArgumentException(nameof(mapper));
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<UserApplicationDto>> GetUserApplications()
+    public async Task<ActionResult<IEnumerable<UserApplicationDto>>> GetUserApplications()
     {
-        return Ok(ApplicationsDataStore.Current.UserApplications);
+        var applicationEntities = await _applicationInfoRepository.GetApplicationsAsync();
+        return Ok(_mapper.Map<IEnumerable<UserApplicationDto>>(applicationEntities));
     }
 
     [HttpGet("{id}", Name = "GetApplication")]
-    public ActionResult<UserApplicationDto> GetApplication(int id)
+    public async Task<IActionResult> GetApplication(int id)
     {
         try
         {
-            var application = ApplicationsDataStore.Current.UserApplications.FirstOrDefault(c => c.ApplicationId == id);
+            var application = await _applicationInfoRepository.GetApplicationAsync(id);
 
             if (application == null)
             {
@@ -35,7 +42,7 @@ public class UserApplicationsController : ControllerBase
                 return NotFound();
             }
 
-            return Ok(application);
+            return Ok(_mapper.Map<UserApplicationDto>(application));
         }
         catch (Exception ex)
         {
@@ -47,70 +54,51 @@ public class UserApplicationsController : ControllerBase
     }
 
     [HttpPost]
-    public ActionResult<UserApplicationDto> CreateUserApplication(UserApplicationCreationDto userApplicationCreation)
+    public async Task<ActionResult<UserApplicationDto>> CreateUserApplication(UserApplicationCreationDto userApplicationCreation)
     {
-        var maxId = ApplicationsDataStore.Current.UserApplications.Max(p => p.ApplicationId);
+        
+        var userApplication = _mapper.Map<Entities.Application>(userApplicationCreation);
 
-        var userApplication = new UserApplicationDto()
-        {
-            ApplicationId = ++maxId,
-            Name = userApplicationCreation.Name,
-            EmailAddress = userApplicationCreation.EmailAddress,
-            AddressLine1 = userApplicationCreation.AddressLine1,
-            AddressLine2 = userApplicationCreation.AddressLine2,
-            City = userApplicationCreation.City,
-            County = userApplicationCreation.County,
-            Postcode = userApplicationCreation.Postcode,
-            Vrn = userApplicationCreation.Vrn
-        };
+        _applicationInfoRepository.AddApplication(userApplication);
 
-        var applications = ApplicationsDataStore.Current.UserApplications;
+        await _applicationInfoRepository.SaveChangesAsync();
 
-        applications.Add(userApplication);
+        var createdApplication = _mapper.Map<Models.UserApplicationDto>(userApplication);
 
         return CreatedAtRoute("GetApplication",
             new
             {
-                id = userApplication.ApplicationId
+                id = createdApplication.ApplicationId
             },
-            userApplication);
+            createdApplication);
     }
 
     [HttpPut("{id}")]
-    public ActionResult UpdateUserApplication(int id, UserApplicationUpdateDto userApplicationUpdate)
+    public async Task<ActionResult> UpdateUserApplication(int id, UserApplicationUpdateDto userApplicationUpdate)
     {
-        var userApplicationFromStore = ApplicationsDataStore.Current.UserApplications.FirstOrDefault(c => c.ApplicationId == id);
-        if (userApplicationFromStore == null)
+        var userApplicationEntity = await _applicationInfoRepository.GetApplicationAsync(id);
+        if (userApplicationEntity == null)
         {
             return NotFound();
         }
 
-        userApplicationFromStore.Name = userApplicationUpdate.Name;
-        userApplicationFromStore.EmailAddress = userApplicationUpdate.EmailAddress;
+        _mapper.Map(userApplicationUpdate, userApplicationEntity);
+
+        await _applicationInfoRepository.SaveChangesAsync();
 
         return NoContent();
     }
 
     [HttpPatch("{id}")]
-    public ActionResult UpdateUserApplication(int id, JsonPatchDocument<UserApplicationUpdateDto> patchApplication)
+    public async Task<ActionResult> UpdateUserApplication(int id, JsonPatchDocument<UserApplicationUpdateDto> patchApplication)
     {
-        var userApplicationFromStore = ApplicationsDataStore.Current.UserApplications.FirstOrDefault(c => c.ApplicationId == id);
-        if (userApplicationFromStore == null)
+        var userApplicationEntity = await _applicationInfoRepository.GetApplicationAsync(id);
+        if (userApplicationEntity == null)
         {
             return NotFound();
         }
 
-        var applicationToPatch = new UserApplicationUpdateDto()
-            {
-                Name = userApplicationFromStore.Name,
-                EmailAddress = userApplicationFromStore.EmailAddress,
-                AddressLine1 = userApplicationFromStore.AddressLine1,
-                AddressLine2 = userApplicationFromStore.AddressLine2,
-                City = userApplicationFromStore.City,
-                County = userApplicationFromStore.County,
-                Postcode = userApplicationFromStore.Postcode,
-                Vrn = userApplicationFromStore.Vrn
-            };
+        var applicationToPatch = _mapper.Map<UserApplicationUpdateDto>(userApplicationEntity);
 
         patchApplication.ApplyTo(applicationToPatch, ModelState);
 
@@ -124,24 +112,24 @@ public class UserApplicationsController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        userApplicationFromStore.Name = applicationToPatch.Name;
-        userApplicationFromStore.EmailAddress = applicationToPatch.EmailAddress;
+        _mapper.Map(applicationToPatch, userApplicationEntity);
+        await _applicationInfoRepository.SaveChangesAsync();
 
         return NoContent();
     }
 
     [HttpDelete("{id}")]
-    public ActionResult DeleteUserApplication(int id)
+    public async Task<ActionResult> DeleteUserApplication(int id)
     {
-        var userApplicationFromStore = ApplicationsDataStore.Current.UserApplications.FirstOrDefault(c => c.ApplicationId == id);
-        if (userApplicationFromStore == null)
+        var userApplicationEntity = await _applicationInfoRepository.GetApplicationAsync(id);
+        if (userApplicationEntity == null)
         {
             return NotFound();
         }
 
-        var applications = ApplicationsDataStore.Current.UserApplications;
+        _applicationInfoRepository.DeleteApplication(userApplicationEntity);
 
-        applications.Remove(userApplicationFromStore);
+        await _applicationInfoRepository.SaveChangesAsync();
 
         return NoContent();
     }
