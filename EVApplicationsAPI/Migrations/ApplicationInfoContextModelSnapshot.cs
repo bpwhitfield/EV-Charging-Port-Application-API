@@ -55,6 +55,20 @@ namespace EVApplicationsAPI.Migrations
                     b.HasKey("ApplicationId");
 
                     b.ToTable("Applications");
+
+                    b.HasData(
+                        new
+                        {
+                            ApplicationId = 1,
+                            AddressLine1 = "",
+                            AddressLine2 = "Brixton",
+                            City = "",
+                            County = "Greater London",
+                            EmailAddress = "test@tester.com",
+                            Name = "Ben",
+                            Postcode = "",
+                            Vrn = ""
+                        });
                 });
 #pragma warning restore 612, 618
         }
