@@ -1,4 +1,5 @@
 using EVApplicationAPI.DbContexts;
+using EVApplicationAPI.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,10 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ApplicationInfoContext>(DbContextOptions
     => DbContextOptions.UseSqlite(
         builder.Configuration["ConnectionStrings:ApplicationInfoDBConnectionString"]));
+
+builder.Services.AddScoped<IApplicationInfoRepository, ApplicationInfoRepository>();
+
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 var app = builder.Build();
 
